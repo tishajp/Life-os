@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIFE OS</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Life OS">
+<meta name="theme-color" content="#0a0a0f">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --accent: #c8f044;
+    --accent2: #7b5ea7;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --danger: #ff5c5c;
+    --warn: #ffb84d;
+    --good: #4dffa6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* AMBIENT GLOW */
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-1 { width: 500px; height: 500px; background: rgba(123,94,167,0.12); top: -200px; right: -100px; }
+  .glow-2 { width: 400px; height: 400px; background: rgba(200,240,68,0.06); bottom: 0; left: -150px; }
+
+  /* LAYOUT */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 120px 0;
+  }
+
+  /* HEADER */
+  header {
+    padding: 48px 24px 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .date-display {
+    text-align: right;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    line-height: 1.6;
+  }
+
+  /* GREETING */
+  .greeting-section {
+    padding: 8px 24px 32px;
+  }
+
+  .greeting {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .greeting em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .system-status {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--good);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* SCORE RING */
+  .vitality-section {
+    padding: 0 24px 32px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .ring-container {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+
+  .ring-container svg {
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 6; }
+  .ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 263;
+    stroke-dashoffset: 263;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ring-score {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .ring-label-text {
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .vitality-info {
+    flex: 1;
+  }
+
+  .vitality-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .vitality-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .vitality-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    border: 1px solid;
+  }
+
+  .tag-good { color: var(--good); border-color: rgba(77,255,166,0.3); background: rgba(77,255,166,0.05); }
+  .tag-warn { color: var(--warn); border-color: rgba(255,184,77,0.3); background: rgba(255,184,77,0.05); }
+  .tag-bad { color: var(--danger); border-color: rgba(255,92,92,0.3); background: rgba(255,92,92,0.05); }
+
+  /* SECTIONS */
+  .section {
+    padding: 0 24px 24px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* INPUT CARDS */
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .input-card:hover {
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+  }
+
+  .input-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255,255,255,0.02));
+    border-radius: inherit;
+  }
+
+  .card-icon { font-size: 20px; margin-bottom: 8px; display: block; }
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .card-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .card-value.unset { color: var(--muted); font-size: 12px; font-weight: 400; font-family: 'DM Mono', monospace; }
+
+  /* SLIDERS */
+  .slider-group { margin-bottom: 14px; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .slider-name {
+    font-size: 12px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .slider-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 24px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(200,240,68,0.4);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  /* AI RECOMMENDATION */
+  .ai-card {
+    background: var(--surface);
+    border: 1px solid rgba(200,240,68,0.15);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ai-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+
+  .ai-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .ai-icon {
+    width: 32px; height: 32px;
+    background: rgba(200,240,68,0.1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 1px solid rgba(200,240,68,0.2);
+  }
+
+  .ai-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+  }
+
+  .ai-subtitle {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .ai-thinking {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .think-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: think 1.4s infinite;
+  }
+  .think-dot:nth-child(2) { animation-delay: 0.2s; }
+  .think-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes think {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  .ai-message {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .ai-message strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* SCHEDULE */
+  .schedule-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .schedule-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    transition: all 0.2s;
+  }
+
+  .schedule-item:hover { border-color: rgba(255,255,255,0.12); }
+
+  .schedule-item.modified {
+    border-color: rgba(200,240,68,0.2);
+    background: rgba(200,240,68,0.03);
+  }
+
+  .schedule-item.cancelled {
+    opacity: 0.4;
+    border-color: rgba(255,92,92,0.2);
+  }
+
+  .schedule-item.cancelled .s-title { text-decoration: line-through; }
+
+  .s-time {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 44px;
+    padding-top: 1px;
+  }
+
+  .s-content { flex: 1; }
+  .s-title { font-size: 13px; margin-bottom: 3px; }
+  .s-note { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  .s-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    align-self: flex-start;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .badge-mod { background: rgba(200,240,68,0.1); color: var(--accent); border: 1px solid rgba(200,240,68,0.2); }
+  .badge-on { background: rgba(77,255,166,0.1); color: var(--good); border: 1px solid rgba(77,255,166,0.2); }
+  .badge-off { background: rgba(255,92,92,0.1); color: var(--danger); border: 1px solid rgba(255,92,92,0.2); }
+
+  /* METRICS BAR */
+  .metrics-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .metric-pill {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+
+  .metric-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    margin-bottom: 2px;
+  }
+
+  .metric-lbl {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px 28px 0 0;
+    padding: 32px 24px 48px;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+
+  .modal-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    margin-top: -4px;
+  }
+
+  /* BUTTONS */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 20px;
+  }
+
+  .btn-primary:hover {
+    background: #d4f55a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(200,240,68,0.2);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  /* NAV */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 50;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 12px 0 28px;
+    display: flex;
+    justify-content: space-around;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 4px 20px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    color: var(--muted);
+  }
+
+  .nav-item.active { color: var(--accent); }
+  .nav-item:hover { color: var(--text); }
+
+  .nav-icon { font-size: 18px; }
+  .nav-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* PAGE VIEWS */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* FINANCE */
+  .finance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 8px;
+  }
+
+  .fi-left { display: flex; align-items: center; gap: 12px; }
+  .fi-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--surface2);
+  }
+  .fi-name { font-size: 13px; margin-bottom: 2px; }
+  .fi-cat { font-size: 11px; color: var(--muted); }
+  .fi-amount { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+  .fi-amount.neg { color: var(--danger); }
+  .fi-amount.pos { color: var(--good); }
+
+  .life-cost {
+    font-size: 10px;
+    color: var(--warn);
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  /* LOG INPUT */
+  .log-form { display: flex; flex-direction: column; gap: 14px; }
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .form-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .form-input:focus { border-color: rgba(200,240,68,0.3); }
+
+  .emotion-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .emotion-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+
+  .emotion-btn:hover, .emotion-btn.selected {
+    border-color: rgba(200,240,68,0.4);
+    background: rgba(200,240,68,0.08);
+  }
+
+  .emotion-emoji { font-size: 20px; display: block; margin-bottom: 4px; }
+  .emotion-label { font-size: 9px; color: var(--muted); letter-spacing: 0.05em; }
+
+  /* DIVIDER */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 8px 0 20px;
+  }
+
+  /* WARNING BANNER */
+  .warning-banner {
+    margin: 0 24px 20px;
+    padding: 14px 16px;
+    background: rgba(255,184,77,0.07);
+    border: 1px solid rgba(255,184,77,0.2);
+    border-radius: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .warning-icon { font-size: 16px; flex-shrink: 0; }
+  .warning-text { font-size: 12px; color: var(--warn); line-height: 1.6; }
+
+  /* SCROLL FIX */
+  .page-content { padding-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="glow-orb glow-1"></div>
+<div class="glow-orb glow-2"></div>
+
+<div class="app">
+
+  <!-- ═══ PAGE: TODAY ═══ -->
+  <div class="page active" id="page-today">
+    <header>
+      <div class="logo">Life OS</div>
+      <div class="date-display" id="date-display"></div>
+    </header>
+
+    <div class="greeting-section">
+      <div class="greeting" id="greeting-text">Good morning,<br><em>let's assess.</em></div>
+      <div class="system-status">
+        <div class="status-dot"></div>
+        <span>System synced · Last check-in: <span id="last-checkin">never</span></span>
+      </div>
+    </div>
+
+    <!-- VITALITY SCORE -->
+    <div class="vitality-section">
+      <div class="ring-container">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle class="ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="ring-fill" id="ring-fill" cx="50" cy="50" r="42"/>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-score" id="ring-score">—</div>
+          <div class="ring-label-text">VITALITY</div>
+        </div>
+      </div>
+      <div class="vitality-info">
+        <div class="vitality-title" id="vitality-title">No data yet</div>
+        <div class="vitality-desc" id="vitality-desc">Log your check-in to see your score and get your personalized day structure.</div>
+        <div class="vitality-tags" id="vitality-tags"></div>
+      </div>
+    </div>
+
+    <!-- WARNING BANNER (hidden by default) -->
+    <div class="warning-banner" id="warning-banner" style="display:none">
+      <div class="warning-icon">⚡</div>
+      <div class="warning-text" id="warning-text"></div>
+    </div>
+
+    <!-- QUICK METRICS -->
+    <div class="section">
+      <div class="section-label">Today's readings</div>
+      <div class="metrics-row">
+        <div class="metric-pill">
+          <div class="metric-val" id="m-sleep" style="color:var(--muted)">—</div>
+          <div class="metric-lbl">Sleep hrs</div>
+        </div>
+        <div class="metric-pill">
+          <div class="metric-val" id="m-energy" style="color:var(--muted)">—</div>
+          <div class="metric-lbl">Energy</div>
+        </div>
+        <div class="metric-pill">
+          <div class="metric-val" id="m-mood" style="color:var(--muted)">—</div>
+          <div class="metric-lbl">Mood</div>
+        </div>
+        <div class="metric-pill">
+          <div class="metric-val" id="m-stress" style="color:var(--muted)">—</div>
+          <div class="metric-lbl">Stress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI RECOMMENDATION -->
+    <div class="section">
+      <div class="section-label">System intelligence</div>
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-icon">⚙</div>
+          <div>
+            <div class="ai-title">LIFE OS · CORE</div>
+            <div class="ai-subtitle">Adaptive intelligence</div>
+          </div>
+        </div>
+        <div id="ai-thinking" class="ai-thinking">
+          <div class="think-dot"></div>
+          <div class="think-dot"></div>
+          <div class="think-dot"></div>
+        </div>
+        <div class="ai-message" id="ai-message" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="section" id="schedule-section" style="display:none">
+      <div class="section-label">Restructured day</div>
+      <div class="schedule-list" id="schedule-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══ PAGE: LOG ═══ -->
+  <div class="page" id="page-log">
+    <header>
+      <div class="logo">Check-in</div>
+      <div class="date-display" id="log-date"></div>
+    </header>
+
+    <div class="section">
+      <div class="section-label">How are you today</div>
+      <div class="log-form">
+
+        <div class="form-row">
+          <div class="form-label">Emotional state</div>
+          <div class="emotion-grid">
+            <div class="emotion-btn" onclick="selectEmotion(this,'Focused')" data-val="Focused">
+              <span class="emotion-emoji">🎯</span><span class="emotion-label">Focused</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Calm')" data-val="Calm">
+              <span class="emotion-emoji">🌊</span><span class="emotion-label">Calm</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Anxious')" data-val="Anxious">
+              <span class="emotion-emoji">😬</span><span class="emotion-label">Anxious</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Tired')" data-val="Tired">
+              <span class="emotion-emoji">😴</span><span class="emotion-label">Tired</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Motivated')" data-val="Motivated">
+              <span class="emotion-emoji">🔥</span><span class="emotion-label">Motivated</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Sad')" data-val="Sad">
+              <span class="emotion-emoji">🌧</span><span class="emotion-label">Sad</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Stressed')" data-val="Stressed">
+              <span class="emotion-emoji">🌀</span><span class="emotion-label">Stressed</span>
+            </div>
+            <div class="emotion-btn" onclick="selectEmotion(this,'Grateful')" data-val="Grateful">
+              <span class="emotion-emoji">✨</span><span class="emotion-label">Grateful</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-label">Sleep quality & hours</div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name">😴 Hours slept</span>
+              <span class="slider-val" id="v-sleep">7</span>
+            </div>
+            <input type="range" min="0" max="12" step="0.5" value="7" oninput="updateSlider('sleep',this.value)" id="sl-sleep">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-label">Energy levels</div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name">⚡ Physical energy</span>
+              <span class="slider-val" id="v-energy">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5" oninput="updateSlider('energy',this.value)" id="sl-energy">
+          </div>
+          <div class="slider-group" style="margin-top:10px">
+            <div class="slider-header">
+              <span class="slider-name">🧠 Mental clarity</span>
+              <span class="slider-val" id="v-clarity">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5" oninput="updateSlider('clarity',this.value)" id="sl-clarity">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-label">Stress & workload</div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name">🌀 Stress level</span>
+              <span class="slider-val" id="v-stress">3</span>
+            </div>
+            <input type="range" min="1" max="10" value="3" oninput="updateSlider('stress',this.value)" id="sl-stress">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-label">Today's key tasks (optional)</div>
+          <input type="text" class="form-input" id="tasks-input" placeholder="e.g. trading analysis, gym, errands...">
+        </div>
+
+        <div class="form-row">
+          <div class="form-label">Anything else? (optional)</div>
+          <input type="text" class="form-input" id="notes-input" placeholder="e.g. bad headache, big deadline, travel day...">
+        </div>
+
+        <button class="btn-primary" onclick="submitCheckin()">⚙ PROCESS CHECK-IN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: FINANCE ═══ -->
+  <div class="page" id="page-finance">
+    <header>
+      <div class="logo">Life Cost</div>
+      <div class="date-display" id="fin-date"></div>
+    </header>
+
+    <div class="section">
+      <div class="section-label">Life energy rate</div>
+      <div class="ai-card" style="margin-bottom:0">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+          <div style="flex:1">
+            <div class="form-label" style="margin-bottom:6px">Your hourly life value ($/hr after tax)</div>
+            <input type="number" class="form-input" id="hourly-rate" value="25" min="1" oninput="recalcCosts()" style="font-family:'Syne',sans-serif;font-weight:700;font-size:18px;text-align:center">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7">
+          This is your <strong style="color:var(--accent)">life energy rate</strong> — what 1 hour of your time is worth. Every purchase will be shown in hours of your life, not dollars.
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="padding-top:0">
+      <div class="section-label">Add expense</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <input type="text" class="form-input" id="exp-name" placeholder="What was it?" style="flex:2">
+        <input type="number" class="form-input" id="exp-amount" placeholder="$0" style="flex:1">
+        <button onclick="addExpense()" style="background:var(--accent);color:#0a0a0f;border:none;border-radius:10px;padding:0 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
+      </div>
+
+      <div class="section-label">Today's spending</div>
+      <div id="expenses-list">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">
+          No expenses logged yet.<br>Add one above.
+        </div>
+      </div>
+
+      <div id="total-section" style="display:none;margin-top:16px">
+        <div class="finance-item" style="border-color:rgba(200,240,68,0.2)">
+          <div class="fi-left">
+            <div class="fi-icon">📊</div>
+            <div>
+              <div class="fi-name" style="font-family:'Syne',sans-serif;font-weight:700">TOTAL TODAY</div>
+              <div class="fi-cat" id="total-life-cost"></div>
+            </div>
+          </div>
+          <div>
+            <div class="fi-amount neg" id="total-amount">$0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: INSIGHTS ═══ -->
+  <div class="page" id="page-insights">
+    <header>
+      <div class="logo">Patterns</div>
+      <div class="date-display" id="ins-date"></div>
+    </header>
+
+    <div class="section">
+      <div class="section-label">Your data</div>
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-icon">📈</div>
+          <div>
+            <div class="ai-title">PATTERN RECOGNITION</div>
+            <div class="ai-subtitle">Requires 3+ check-ins</div>
+          </div>
+        </div>
+        <div class="ai-message" id="insights-msg" style="display:block;color:var(--muted);font-size:12px">
+          Complete your daily check-ins and patterns will surface here. The system looks for correlations between sleep, mood, energy, and your performance.
+          <br><br>
+          After 7 days, you'll see:<br>
+          · Your peak performance windows<br>
+          · Emotional cycle patterns<br>
+          · Sleep-productivity correlation<br>
+          · Burnout risk indicators
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Check-in history</div>
+      <div id="history-list">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">
+          No history yet. Start checking in daily.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .app -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="showPage('today', this)">
+    <span class="nav-icon">◈</span>
+    <span class="nav-label">Today</span>
+  </button>
+  <button class="nav-item" onclick="showPage('log', this)">
+    <span class="nav-icon">⊕</span>
+    <span class="nav-label">Check-in</span>
+  </button>
+  <button class="nav-item" onclick="showPage('finance', this)">
+    <span class="nav-icon">◎</span>
+    <span class="nav-label">Life Cost</span>
+  </button>
+  <button class="nav-item" onclick="showPage('insights', this)">
+    <span class="nav-icon">◬</span>
+    <span class="nav-label">Patterns</span>
+  </button>
+</div>
+
+<script>
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let state = {
+  emotion: null,
+  sleep: 7,
+  energy: 5,
+  clarity: 5,
+  stress: 3,
+  tasks: '',
+  notes: '',
+  checkedIn: false,
+  history: JSON.parse(localStorage.getItem('lifeos_history') || '[]'),
+  expenses: JSON.parse(localStorage.getItem('lifeos_expenses') || '[]')
+};
+
+// ═══════════════════════════
+// INIT
+// ═══════════════════════════
+function init() {
+  updateDates();
+  setGreeting();
+  renderExpenses();
+
+  // Restore today's check-in if exists
+  const today = new Date().toDateString();
+  const todayEntry = state.history.find(h => h.date === today);
+  if (todayEntry) {
+    state = { ...state, ...todayEntry.data, checkedIn: true };
+    updateTodayDisplay();
+  } else {
+    // Show thinking state
+    setTimeout(() => {
+      document.getElementById('ai-message').style.display = 'block';
+      document.getElementById('ai-thinking').style.display = 'none';
+      document.getElementById('ai-message').innerHTML =
+        `<strong>No check-in logged yet.</strong><br><br>Head to <strong>Check-in</strong> to log your current state and I'll restructure your day around how you actually feel right now.`;
+    }, 1200);
+  }
+
+  renderHistory();
+}
+
+function updateDates() {
+  const now = new Date();
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  const str = now.toLocaleDateString('en-US', opts).toUpperCase();
+  const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('date-display').innerHTML = str + '<br>' + time;
+  document.getElementById('log-date').innerHTML = str + '<br>' + time;
+  document.getElementById('fin-date').innerHTML = str + '<br>' + time;
+  document.getElementById('ins-date').innerHTML = str + '<br>' + time;
+}
+
+function setGreeting() {
+  const h = new Date().getHours();
+  const greetings = {
+    morning: ['Good morning,<br><em>let\'s calibrate.</em>', 'Morning,<br><em>what\'s your state?</em>'],
+    afternoon: ['Good afternoon,<br><em>how are you holding?</em>', 'Afternoon check,<br><em>let\'s recalibrate.</em>'],
+    evening: ['Good evening,<br><em>time to wind down.</em>', 'Evening,<br><em>how was the day?</em>'],
+    night: ['Late night,<br><em>rest is data too.</em>', 'Still awake,<br><em>noted.</em>']
+  };
+  let key = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  const arr = greetings[key];
+  document.getElementById('greeting-text').innerHTML = arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ═══════════════════════════
+// NAVIGATION
+// ═══════════════════════════
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════
+// CHECK-IN FORM
+// ═══════════════════════════
+function selectEmotion(el, val) {
+  document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  state.emotion = val;
+}
+
+function updateSlider(key, val) {
+  state[key] = parseFloat(val);
+  document.getElementById('v-' + key).textContent = val;
+}
+
+function submitCheckin() {
+  if (!state.emotion) {
+    alert('Please select your emotional state first.');
+    return;
+  }
+
+  state.tasks = document.getElementById('tasks-input').value;
+  state.notes = document.getElementById('notes-input').value;
+  state.checkedIn = true;
+
+  // Save to history
+  const today = new Date().toDateString();
+  const existing = state.history.findIndex(h => h.date === today);
+  const entry = {
+    date: today,
+    timestamp: new Date().toISOString(),
+    data: {
+      emotion: state.emotion,
+      sleep: state.sleep,
+      energy: state.energy,
+      clarity: state.clarity,
+      stress: state.stress,
+      tasks: state.tasks,
+      notes: state.notes
+    }
+  };
+
+  if (existing >= 0) state.history[existing] = entry;
+  else state.history.unshift(entry);
+
+  localStorage.setItem('lifeos_history', JSON.stringify(state.history));
+
+  // Update last check-in
+  document.getElementById('last-checkin').textContent = 'just now';
+
+  updateTodayDisplay();
+  renderHistory();
+
+  // Switch to today
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-today').classList.add('active');
+  document.querySelector('.nav-item').classList.add('active');
+}
+
+// ═══════════════════════════
+// VITALITY SCORE & DISPLAY
+// ═══════════════════════════
+function calcVitality() {
+  const sleepScore = Math.min(state.sleep / 8, 1) * 25;
+  const energyScore = (state.energy / 10) * 25;
+  const clarityScore = (state.clarity / 10) * 25;
+  const stressScore = ((10 - state.stress) / 10) * 25;
+  return Math.round(sleepScore + energyScore + clarityScore + stressScore);
+}
+
+function updateTodayDisplay() {
+  const score = calcVitality();
+
+  // Ring animation
+  const circ = 263;
+  const offset = circ - (score / 100) * circ;
+  const ring = document.getElementById('ring-fill');
+  ring.style.strokeDashoffset = offset;
+
+  // Color by score
+  if (score >= 75) ring.style.stroke = 'var(--good)';
+  else if (score >= 50) ring.style.stroke = 'var(--accent)';
+  else if (score >= 30) ring.style.stroke = 'var(--warn)';
+  else ring.style.stroke = 'var(--danger)';
+
+  document.getElementById('ring-score').textContent = score;
+
+  // Metrics
+  document.getElementById('m-sleep').textContent = state.sleep + 'h';
+  document.getElementById('m-sleep').style.color = state.sleep >= 7 ? 'var(--good)' : state.sleep >= 5 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('m-energy').textContent = state.energy + '/10';
+  document.getElementById('m-energy').style.color = state.energy >= 7 ? 'var(--good)' : state.energy >= 4 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('m-mood').textContent = state.emotion ? state.emotion.slice(0,4) : '—';
+  document.getElementById('m-mood').style.color = 'var(--text)';
+  document.getElementById('m-stress').textContent = state.stress + '/10';
+  document.getElementById('m-stress').style.color = state.stress <= 3 ? 'var(--good)' : state.stress <= 6 ? 'var(--warn)' : 'var(--danger)';
+
+  // Vitality label
+  let title, desc, tags = [];
+  if (score >= 80) {
+    title = 'Peak state';
+    desc = 'Your system is firing on all cylinders. This is a high-leverage day — prioritize your hardest, most important work.';
+    tags = ['<span class="tag tag-good">High focus</span>', '<span class="tag tag-good">Deep work</span>', '<span class="tag tag-good">Create</span>'];
+  } else if (score >= 60) {
+    title = 'Solid capacity';
+    desc = 'Good foundation. You have the bandwidth for meaningful work. Protect your energy — don\'t waste it on noise.';
+    tags = ['<span class="tag tag-good">Productive</span>', '<span class="tag tag-warn">Pace yourself</span>'];
+  } else if (score >= 40) {
+    title = 'Reduced capacity';
+    desc = 'Your system is running below optimal. Handle essentials only. Recovery is productive today.';
+    tags = ['<span class="tag tag-warn">Essentials only</span>', '<span class="tag tag-warn">Recovery mode</span>'];
+  } else {
+    title = 'Recovery needed';
+    desc = 'Your body and mind are signaling rest. Forcing through depleted states creates compounding debt. Rest is the work today.';
+    tags = ['<span class="tag tag-bad">Rest priority</span>', '<span class="tag tag-bad">Low demand</span>'];
+  }
+
+  document.getElementById('vitality-title').textContent = title;
+  document.getElementById('vitality-desc').textContent = desc;
+  document.getElementById('vitality-tags').innerHTML = tags.join('');
+
+  // Warning banner
+  if (state.sleep < 5 && state.stress > 7) {
+    document.getElementById('warning-banner').style.display = 'flex';
+    document.getElementById('warning-text').textContent = 'Low sleep + high stress is your pre-burnout pattern. Flag this day. Cancel non-essential commitments if possible.';
+  } else if (state.stress >= 8) {
+    document.getElementById('warning-banner').style.display = 'flex';
+    document.getElementById('warning-text').textContent = 'Critical stress detected. Your cognitive capacity drops 30% above stress level 8. Reschedule anything that requires clear judgment.';
+  } else {
+    document.getElementById('warning-banner').style.display = 'none';
+  }
+
+  // AI message
+  generateAIMessage(score);
+
+  // Schedule
+  generateSchedule(score);
+}
+
+// ═══════════════════════════
+// AI MESSAGE
+// ═══════════════════════════
+function generateAIMessage(score) {
+  document.getElementById('ai-thinking').style.display = 'flex';
+  document.getElementById('ai-message').style.display = 'none';
+
+  setTimeout(() => {
+    document.getElementById('ai-thinking').style.display = 'none';
+    document.getElementById('ai-message').style.display = 'block';
+
+    let msg = '';
+    const tasks = state.tasks ? state.tasks : 'your usual tasks';
+
+    if (score >= 75) {
+      msg = `You're at <strong>${score}/100 vitality</strong> — peak operating range. Sleep was ${state.sleep}h, energy is ${state.energy}/10, and you're feeling <strong>${state.emotion}</strong>.<br><br>This is a <strong>high-leverage day</strong>. I've front-loaded your most cognitively demanding work. ${state.tasks ? `Focus on: <strong>${tasks}</strong>.` : ''} Don't dilute this state with busywork. Protect the morning.`;
+    } else if (score >= 50) {
+      msg = `Vitality at <strong>${score}/100</strong>. Solid but not peak. Sleep was ${state.sleep}h, stress at ${state.stress}/10, and you're feeling <strong>${state.emotion}</strong>.<br><br>I've <strong>restructured your day</strong> to protect your energy. Heavy lifting is scheduled for your best window. ${state.stress > 6 ? '<strong>Stress is elevated</strong> — I\'ve added buffer time between tasks.' : ''}`;
+    } else if (score >= 35) {
+      msg = `You're at <strong>${score}/100 vitality</strong>. Your system is running low. Sleep was only ${state.sleep}h and energy is ${state.energy}/10.<br><br>I've <strong>reduced today's load</strong> significantly. Only essentials remain. ${state.tasks ? `If you must do <strong>${tasks}</strong>, do it in your first usable hour.` : ''} Recovery now prevents a worse crash tomorrow.`;
+    } else {
+      msg = `<strong>${score}/100 vitality</strong> — this is a rest day. Your body is asking for recovery. Sleep ${state.sleep}h, energy ${state.energy}/10, mood: ${state.emotion}.<br><br><strong>The system has cleared your schedule</strong> to essentials only. Fighting through depleted states today costs you 2–3 days of recovery later. Rest is the most productive thing you can do right now.`;
+    }
+
+    if (state.notes) {
+      msg += `<br><br>Note logged: <em>"${state.notes}"</em> — factored into today's structure.`;
+    }
+
+    document.getElementById('ai-message').innerHTML = msg;
+  }, 1800);
+}
+
+// ═══════════════════════════
+// SCHEDULE GENERATOR
+// ═══════════════════════════
+function generateSchedule(score) {
+  const scheduleEl = document.getElementById('schedule-section');
+  const listEl = document.getElementById('schedule-list');
+  scheduleEl.style.display = 'block';
+
+  let items = [];
+
+  if (score >= 75) {
+    items = [
+      { time: '08:00', title: 'Deep work block', note: 'Peak cognitive state — highest priority task first.', badge: 'on', badgeLabel: 'Active' },
+      { time: '10:30', title: 'Break + hydration', note: '15 min. Protect the momentum.', badge: 'on', badgeLabel: 'Active' },
+      { time: '11:00', title: 'Secondary tasks', note: state.tasks || 'Communications, planning, admin.', badge: 'on', badgeLabel: 'Active' },
+      { time: '13:00', title: 'Lunch + recovery', note: 'Full break. No screens if possible.', badge: 'on', badgeLabel: 'Active' },
+      { time: '14:30', title: 'Physical movement', note: 'Energy is high — don\'t skip this.', badge: 'on', badgeLabel: 'Active' },
+      { time: '16:00', title: 'Admin & communications', note: 'Lower-demand tasks for the afternoon dip.', badge: 'mod', badgeLabel: 'Moved' },
+      { time: '19:00', title: 'Wind down protocol', note: 'Protect tomorrow\'s sleep to maintain this state.', badge: 'on', badgeLabel: 'Active' },
+    ];
+  } else if (score >= 50) {
+    items = [
+      { time: '09:00', title: 'Slow start + coffee', note: 'Give your system 30 min to warm up.', badge: 'mod', badgeLabel: 'Adjusted' },
+      { time: '09:30', title: 'Priority task only', note: state.tasks || 'One thing. Not three.', badge: 'on', badgeLabel: 'Active' },
+      { time: '11:30', title: 'Break — walk outside', note: 'Physical reset boosts afternoon clarity.', badge: 'mod', badgeLabel: 'Added' },
+      { time: '13:00', title: 'Lunch', note: 'Nourish the system.', badge: 'on', badgeLabel: 'Active' },
+      { time: '14:00', title: 'Light tasks', note: 'Emails, admin, low-stakes decisions only.', badge: 'mod', badgeLabel: 'Reduced' },
+      { time: '17:00', title: 'Gym — reduced intensity', note: state.energy < 5 ? 'Walk or light session only — don\'t push it.' : 'Moderate effort. Listen to your body.', badge: 'mod', badgeLabel: 'Modified' },
+      { time: '21:00', title: 'Sleep preparation', note: '8h target to recover.', badge: 'on', badgeLabel: 'Active' },
+    ];
+  } else {
+    items = [
+      { time: 'AM', title: 'Rest — no alarm', note: 'Sleep debt is real debt.', badge: 'mod', badgeLabel: 'Rest' },
+      { time: '—', title: 'Gym', note: 'Cancelled today. Recovery takes priority.', badge: 'off', badgeLabel: 'Cancelled' },
+      { time: '—', title: 'Heavy cognitive work', note: 'Postponed. You won\'t produce quality work in this state.', badge: 'off', badgeLabel: 'Cancelled' },
+      { time: 'When ready', title: 'Essential tasks only', note: state.tasks ? `One thing: ${state.tasks}` : 'One thing, then stop.', badge: 'on', badgeLabel: 'Keep' },
+      { time: 'Afternoon', title: 'Gentle movement', note: 'Walk only. No gym, no pushing.', badge: 'mod', badgeLabel: 'Modified' },
+      { time: '21:00', title: 'Early sleep — 9h target', note: 'Your system needs a full reset tonight.', badge: 'on', badgeLabel: 'Priority' },
+    ];
+  }
+
+  listEl.innerHTML = items.map(item => `
+    <div class="schedule-item ${item.badge === 'mod' ? 'modified' : ''} ${item.badge === 'off' ? 'cancelled' : ''}">
+      <div class="s-time">${item.time}</div>
+      <div class="s-content">
+        <div class="s-title">${item.title}</div>
+        <div class="s-note">${item.note}</div>
+      </div>
+      <span class="s-badge ${item.badge === 'on' ? 'badge-on' : item.badge === 'mod' ? 'badge-mod' : 'badge-off'}">${item.badgeLabel}</span>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════
+// FINANCE
+// ═══════════════════════════
+function addExpense() {
+  const name = document.getElementById('exp-name').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  if (!name || isNaN(amount) || amount <= 0) return;
+
+  const today = new Date().toDateString();
+  state.expenses.push({ name, amount, date: today });
+  localStorage.setItem('lifeos_expenses', JSON.stringify(state.expenses));
+
+  document.getElementById('exp-name').value = '';
+  document.getElementById('exp-amount').value = '';
+  renderExpenses();
+}
+
+function recalcCosts() { renderExpenses(); }
+
+function renderExpenses() {
+  const rate = parseFloat(document.getElementById('hourly-rate')?.value) || 25;
+  const today = new Date().toDateString();
+  const todayExp = state.expenses.filter(e => e.date === today);
+
+  const listEl = document.getElementById('expenses-list');
+  if (!listEl) return;
+
+  if (todayExp.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No expenses logged yet.<br>Add one above.</div>';
+    document.getElementById('total-section').style.display = 'none';
+    return;
+  }
+
+  const icons = { default: '💸', food: '🍔', transport: '🚗', shopping: '🛍', coffee: '☕', subscription: '📱' };
+
+  listEl.innerHTML = todayExp.map((e, i) => {
+    const hours = (e.amount / rate).toFixed(1);
+    const mins = Math.round((e.amount / rate) * 60);
+    const timeStr = hours >= 1 ? `${hours}h of your life` : `${mins}m of your life`;
+    return `
+      <div class="finance-item">
+        <div class="fi-left">
+          <div class="fi-icon">${icons.default}</div>
+          <div>
+            <div class="fi-name">${e.name}</div>
+            <div class="fi-cat">logged today</div>
+          </div>
+        </div>
+        <div>
+          <div class="fi-amount neg">$${e.amount.toFixed(2)}</div>
+          <div class="life-cost">= ${timeStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const total = todayExp.reduce((s, e) => s + e.amount, 0);
+  const totalHours = (total / rate).toFixed(1);
+  document.getElementById('total-amount').textContent = '$' + total.toFixed(2);
+  document.getElementById('total-life-cost').textContent = `= ${totalHours} hours of your life`;
+  document.getElementById('total-section').style.display = 'block';
+}
+
+// ═══════════════════════════
+// HISTORY
+// ═══════════════════════════
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!el) return;
+  if (state.history.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No history yet. Start checking in daily.</div>';
+    return;
+  }
+
+  el.innerHTML = state.history.slice(0, 14).map(entry => {
+    const d = entry.data;
+    const score = Math.round(
+      Math.min(d.sleep / 8, 1) * 25 +
+      (d.energy / 10) * 25 +
+      (d.clarity / 10) * 25 +
+      ((10 - d.stress) / 10) * 25
+    );
+    const color = score >= 75 ? 'var(--good)' : score >= 50 ? 'var(--accent)' : score >= 30 ? 'var(--warn)' : 'var(--danger)';
+    return `
+      <div class="finance-item" style="margin-bottom:8px">
+        <div class="fi-left">
+          <div class="fi-icon" style="font-size:14px;color:${color};background:none;width:auto">${score}</div>
+          <div>
+            <div class="fi-name">${entry.date}</div>
+            <div class="fi-cat">${d.emotion} · ${d.sleep}h sleep · stress ${d.stress}/10</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:${color}">${score >= 75 ? 'Peak' : score >= 50 ? 'Solid' : score >= 30 ? 'Low' : 'Rest'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════
+// START
+// ═══════════════════════════
+init();
+
+// Refresh time every minute
+setInterval(updateDates, 60000);
+
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Life OS: offline support active'))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
